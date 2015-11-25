@@ -3,41 +3,104 @@ DB = Sequel.connect(ENV['DATABASE_URL'] || 'postgres://localhost:5432/mei_portug
 BOT_TOKEN = ENV['BOT_TOKEN']
 Events = DB[:events]
 InterfaceChats = DB[:interface_chats]
-BOT = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/")
+Tokens = DB[:tokens]
 
 def send_message(message)
-  BOT.post do |request|
+  bot_api = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/")
+  bot_api.post do |request|
     request.url 'sendMessage'
     request.headers['Content-Type'] = 'application/json'
     request.body = message
   end
 end
 
+def get_new_token
+  tokens_api = Faraday.new(url: "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13")
+  response = tokens_api.post do |request|
+    request.headers = { 'Content-Type' => 'application/x-www-form-urlencoded' }
+    request.body = {
+      client_id: ENV['CLIENT_ID'],
+      client_secret: ENV['CLIENT_SECRET'],
+      scope: 'http://api.microsofttranslator.com',
+      grant_type: 'client_credentials'
+    }
+  end
+  new_token = JSON.parse(response.body)
+  if new_token['error']
+    raise "Error generating token: #{new_token['error']}\nError description: #{new_token['error_description']}"
+  end
+  new_token
+end
+
+def save_token(new_token)
+  Tokens.delete
+  Tokens.insert(
+    expires_at: Time.now.to_i + new_token['expires_in'].to_i,
+    value: new_token['access_token']
+  )
+end
+
+def token
+  last_token = Tokens.order(:expires_at).last
+  puts "Last token:"
+  p last_token
+  if last_token && last_token[:expires_at] > Time.now.to_i + 10
+    last_token[:value]
+  else
+    puts "creating new token"
+    new_token = get_new_token
+    save_token(new_token)
+    new_token['access_token']
+  end
+end
+
+def translate(message)
+  translation_api = Faraday.new(url: "http://api.microsofttranslator.com/v2/Http.svc/Translate")
+  puts "requesting translation"
+  response = translation_api.get do |request|
+    request.headers['Authorization'] = "Bearer #{token}"
+    request.params['from'] = 'pt'
+    request.params['to'] = 'en'
+    request.params['text'] = message
+  end
+  if response.status.to_i > 200 && response.body =~ /^<html>/
+    p "Error: translation api returned this:\n#{response.body}"
+  else
+    response.body =~ />([^<]+)</
+    $1
+  end
+end
+
 post "/#{BOT_TOKEN}" do
   ping = JSON.parse request.body.read
-  if ping['ok']
-    ping['result'].each do |result|
+  final_response = if ping['ok']
+    ping['result'].map do |result|
       next if Events[telegram_id: result['update_id']]
-      DB.transaction do
+      published_message = DB.transaction do
         message = result['message']
         if message
           Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
           from  = message['from']
-          message_to_translate = "#{from['first_name']} #{from['last_name']} (#{from['username']}) disse:\n"
-          message_to_translate << message['text']
-          translated_message = translate(message_to_translate)
+          translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
+          translated_message << translate(message['text'])
 
-          InterfaceChats.map(:chat_id).each do |chat_id|
-            # request = send_message({chat_id: chat_id, text: translated_message}.to_json)
-            # puts "Info: #{JSON.parse(request.body).inspect}"
-          end
-          json({ published_message: translated_message })
+          # InterfaceChats.map(:chat_id).each do |chat_id|
+          #   # request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+          #   # puts "Info: #{JSON.parse(request.body).inspect}"
+          # end
+          { published_message: translated_message }
         end
+      end
+      if published_message
+        published_message
+      else
+        { random: 'error' }
       end
     end
   else
     puts "Error: #{ping['error_code']}: #{ping['description']}"
-    json(error: :sorry)
+    { error: :sorry }
   end
+  json final_response
 end
