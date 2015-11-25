@@ -27,7 +27,7 @@ def get_new_token
   end
   new_token = JSON.parse(response.body)
   if new_token['error']
-    raise "Error generating token: #{new_token['error']}\nError description: #{new_token['error_description']}"
+    raise "[Error] generating token: #{new_token['error']}\n[Error] description: #{new_token['error_description']}"
   end
   new_token
 end
@@ -64,7 +64,7 @@ def translate(message)
     request.params['text'] = message
   end
   if response.status.to_i > 200 && response.body =~ /^<html>/
-    p "Error: translation api returned this:\n#{response.body}"
+    p "[Error] translation api returned this:\n#{response.body}"
   else
     response.body =~ />([^<]+)</
     $1
@@ -76,20 +76,31 @@ post "/#{BOT_TOKEN}" do
   final_response = if ping['ok']
     ping['result'].map do |result|
       next if Events[telegram_id: result['update_id']]
+      puts '[Info] received new message'
+      p result
+
       published_message = DB.transaction do
         message = result['message']
         if message
-          Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
+          case message['text']
+          when '/start_mei_bot'
+            InterfaceChats.insert(chat_id: message['from']['id'])
+          when '/end_mei_bot'
+            InterfaceChats.where(chat_id: message['from']['id']).delete
+          else
+            Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
-          from  = message['from']
-          translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
-          translated_message << translate(message['text'])
+            from  = message['from']
+            translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
+            translated_message << translate(message['text'])
 
-          # InterfaceChats.map(:chat_id).each do |chat_id|
-          #   # request = send_message({chat_id: chat_id, text: translated_message}.to_json)
-          #   # puts "Info: #{JSON.parse(request.body).inspect}"
-          # end
-          { published_message: translated_message }
+            puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
+            InterfaceChats.map(:chat_id).each do |chat_id|
+              request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+              puts "[Info]: #{JSON.parse(request.body).inspect}"
+            end
+            { published_message: translated_message }
+          end
         end
       end
       if published_message
@@ -99,7 +110,7 @@ post "/#{BOT_TOKEN}" do
       end
     end
   else
-    puts "Error: #{ping['error_code']}: #{ping['description']}"
+    puts "[Error]: #{ping['error_code']}: #{ping['description']}"
     { error: :sorry }
   end
   json final_response
