@@ -72,10 +72,12 @@ def translate(message)
 end
 
 post "/#{BOT_TOKEN}" do
+  p request.body if ENV['DEBUG']
   ping = JSON.parse request.body.read
+  puts '[Info] received new message with keys: #{ping.keys.inspect}'
+  p ping if ENV['DEBUG']
+
   final_response = if ping['ok']
-    puts '[Info] received new message:'
-    p ping
 
     ping['result'].map do |result|
       next if Events[telegram_id: result['update_id']]
