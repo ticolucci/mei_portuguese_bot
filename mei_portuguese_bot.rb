@@ -71,67 +71,75 @@ def translate(message)
   end
 end
 
+def register_chat chat_id
+  if InterfaceChats.where(chat_id: chat_id)
+    send_message({chat_id: chat_id, text: 'chat was already registered'}.to_json)
+    puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat was already registered'}}.to_json)"
+  else
+    InterfaceChats.insert(chat_id: chat_id)
+    send_message({chat_id: chat_id, text: 'chat registered successfully'}.to_json)
+    puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat registered successfully'}}.to_json)"
+  end
+end
+
+def unregister_chat chat_id
+  if InterfaceChats.where(chat_id: chat_id)
+    InterfaceChats.where(chat_id: chat_id).delete
+    send_message({chat_id: chat_id, text: 'chat unregistered'}.to_json)
+    puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat unregistered'}}.to_json)"
+  else
+    send_message({chat_id: chat_id, text: 'nothing to do here'}.to_json)
+    puts "[Info] send_message({chat_id: #{chat_id}, text: #{'nothing to do here'}}.to_json)"
+  end
+end
+
+def handle_message result
+  return {already: 'processed'} if Events[telegram_id: result['update_id']]
+  DB.transaction do
+    message = result['message']
+    if message
+      case message['text']
+      when '/start_mei_bot'
+        register_chat(message['from']['id'])
+      when '/end_mei_bot'
+        unregister_chat(message['from']['id'])
+      else
+        Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
+
+        from  = message['from']
+        translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
+        translated_message << translate(message['text'])
+
+        puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
+        InterfaceChats.map(:chat_id).each do |chat_id|
+          request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+          puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
+          puts "[Info]: #{JSON.parse(request.body).inspect}"
+        end
+        { published_message: translated_message }
+      end
+    end
+  end
+end
+
+def process ping
+  if ping.keys.include?('ok') && !ping['ok']
+    if ping.keys.include?('error_code') && ping.keys.include?('description')
+      puts "[Error]: #{ping['error_code']}: #{ping['description']}"
+      { error: :sorry }
+    else
+      { random: 'error' }
+    end
+  else
+    handle_message ping
+  end
+end
+
 post "/#{BOT_TOKEN}" do
   p request.body if ENV['DEBUG']
   ping = JSON.parse request.body.read
   puts "[Info] received new message with keys: #{ping.keys.inspect}"
   p ping if ENV['DEBUG']
 
-  final_response = if ping['ok']
-
-    ping['result'].map do |result|
-      next if Events[telegram_id: result['update_id']]
-
-      published_message = DB.transaction do
-        message = result['message']
-        if message
-          case message['text']
-          when '/start_mei_bot'
-            chat_id = message['from']['id']
-            if InterfaceChats.where(chat_id: chat_id)
-              send_message({chat_id: chat_id, text: 'chat was already registered'}.to_json)
-              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat was already registered'}}.to_json)"
-            else
-              InterfaceChats.insert(chat_id: chat_id)
-              send_message({chat_id: chat_id, text: 'chat registered successfully'}.to_json)
-              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat registered successfully'}}.to_json)"
-            end
-          when '/end_mei_bot'
-            chat_id = message['from']['id']
-            if InterfaceChats.where(chat_id: chat_id)
-              InterfaceChats.where(chat_id: chat_id).delete
-              send_message({chat_id: chat_id, text: 'chat unregistered'}.to_json)
-              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat unregistered'}}.to_json)"
-            else
-              send_message({chat_id: chat_id, text: 'nothing to do here'}.to_json)
-              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'nothing to do here'}}.to_json)"
-            end
-          else
-            Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
-
-            from  = message['from']
-            translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
-            translated_message << translate(message['text'])
-
-            puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
-            InterfaceChats.map(:chat_id).each do |chat_id|
-              request = send_message({chat_id: chat_id, text: translated_message}.to_json)
-              puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-              puts "[Info]: #{JSON.parse(request.body).inspect}"
-            end
-            { published_message: translated_message }
-          end
-        end
-      end
-      if published_message
-        published_message
-      else
-        { random: 'error' }
-      end
-    end
-  else
-    puts "[Error]: #{ping['error_code']}: #{ping['description']}"
-    { error: :sorry }
-  end
-  json final_response
+  json(process(ping))
 end
