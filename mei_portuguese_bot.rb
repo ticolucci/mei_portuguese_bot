@@ -116,7 +116,6 @@ def handle_message result
         InterfaceChats.map(:chat_id).each do |chat_id|
           request = send_message({chat_id: chat_id, text: translated_message}.to_json)
           puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-          puts "[Info] #{JSON.parse(request.body).inspect}"
         end
         { published_message: translated_message }
       end
@@ -138,7 +137,6 @@ def process ping
 end
 
 post "/#{BOT_TOKEN}" do
-  p request.body if ENV['DEBUG']
   ping = JSON.parse request.body.read
   puts "[Info] received new message with keys: #{ping.keys.inspect}"
   p ping if ENV['DEBUG']
