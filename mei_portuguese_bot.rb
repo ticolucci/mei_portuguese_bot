@@ -114,7 +114,7 @@ def handle_message result
         InterfaceChats.map(:chat_id).each do |chat_id|
           request = send_message({chat_id: chat_id, text: translated_message}.to_json)
           puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-          puts "[Info]: #{JSON.parse(request.body).inspect}"
+          puts "[Info] #{JSON.parse(request.body).inspect}"
         end
         { published_message: translated_message }
       end
@@ -125,7 +125,7 @@ end
 def process ping
   if ping.keys.include?('ok') && !ping['ok']
     if ping.keys.include?('error_code') && ping.keys.include?('description')
-      puts "[Error]: #{ping['error_code']}: #{ping['description']}"
+      puts "[Error] #{ping['error_code']}: #{ping['description']}"
       { error: :sorry }
     else
       { random: 'error' }
