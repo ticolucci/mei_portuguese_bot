@@ -74,10 +74,11 @@ end
 post "/#{BOT_TOKEN}" do
   ping = JSON.parse request.body.read
   final_response = if ping['ok']
+    puts '[Info] received new message:'
+    p ping
+
     ping['result'].map do |result|
       next if Events[telegram_id: result['update_id']]
-      puts '[Info] received new message'
-      p result
 
       published_message = DB.transaction do
         message = result['message']
@@ -87,17 +88,21 @@ post "/#{BOT_TOKEN}" do
             chat_id = message['from']['id']
             if InterfaceChats.where(chat_id: chat_id)
               send_message({chat_id: chat_id, text: 'chat was already registered'}.to_json)
+              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat was already registered'}}.to_json)"
             else
               InterfaceChats.insert(chat_id: chat_id)
               send_message({chat_id: chat_id, text: 'chat registered successfully'}.to_json)
+              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat registered successfully'}}.to_json)"
             end
           when '/end_mei_bot'
             chat_id = message['from']['id']
             if InterfaceChats.where(chat_id: chat_id)
               InterfaceChats.where(chat_id: chat_id).delete
               send_message({chat_id: chat_id, text: 'chat unregistered'}.to_json)
+              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'chat unregistered'}}.to_json)"
             else
               send_message({chat_id: chat_id, text: 'nothing to do here'}.to_json)
+              puts "[Info] send_message({chat_id: #{chat_id}, text: #{'nothing to do here'}}.to_json)"
             end
           else
             Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
@@ -109,6 +114,7 @@ post "/#{BOT_TOKEN}" do
             puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
             InterfaceChats.map(:chat_id).each do |chat_id|
               request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+              puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
               puts "[Info]: #{JSON.parse(request.body).inspect}"
             end
             { published_message: translated_message }
