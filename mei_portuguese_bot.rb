@@ -84,9 +84,21 @@ post "/#{BOT_TOKEN}" do
         if message
           case message['text']
           when '/start_mei_bot'
-            InterfaceChats.insert(chat_id: message['from']['id'])
+            chat_id = message['from']['id']
+            if InterfaceChats.where(chat_id: chat_id)
+              send_message({chat_id: chat_id, text: 'chat was already registered'}.to_json)
+            else
+              InterfaceChats.insert(chat_id: chat_id)
+              send_message({chat_id: chat_id, text: 'chat registered successfully'}.to_json)
+            end
           when '/end_mei_bot'
-            InterfaceChats.where(chat_id: message['from']['id']).delete
+            chat_id = message['from']['id']
+            if InterfaceChats.where(chat_id: chat_id)
+              InterfaceChats.where(chat_id: chat_id).delete
+              send_message({chat_id: chat_id, text: 'chat unregistered'}.to_json)
+            else
+              send_message({chat_id: chat_id, text: 'nothing to do here'}.to_json)
+            end
           else
             Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
