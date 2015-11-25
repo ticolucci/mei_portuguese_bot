@@ -96,28 +96,24 @@ def handle_message result
   return {already: 'processed'} if Events[telegram_id: result['update_id']]
   DB.transaction do
     message = result['message']
-    if message
-      case message['text']
-      when '/start_mei_bot'
-        register_chat(message['from']['id'])
-        register_chat(message['chat']['id'])
-      when '/end_mei_bot'
-        unregister_chat(message['from']['id'])
-        unregister_chat(message['chat']['id'])
-      else
-        Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
+    case message['text']
+    when '/start_mei_bot'
+      register_chat(message['chat']['id'])
+    when '/end_mei_bot'
+      unregister_chat(message['chat']['id'])
+    else
+      Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
-        from  = message['from']
-        translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
-        translated_message << translate(message['text'])
+      from  = message['from']
+      translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
+      translated_message << translate(message['text'])
 
-        puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
-        InterfaceChats.map(:chat_id).each do |chat_id|
-          request = send_message({chat_id: chat_id, text: translated_message}.to_json)
-          puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-        end
-        { published_message: translated_message }
+      puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
+      InterfaceChats.map(:chat_id).each do |chat_id|
+        request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+        puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
       end
+      { published_message: translated_message }
     end
   end
 end
