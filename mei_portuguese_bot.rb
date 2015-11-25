@@ -98,9 +98,9 @@ def handle_message result
     message = result['message']
     case message['text']
     when '/start_mei_bot'
-      register_chat(message['chat']['id'])
+      # register_chat(message['chat']['id'])
     when '/end_mei_bot'
-      unregister_chat(message['chat']['id'])
+      # unregister_chat(message['chat']['id'])
     else
       Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
