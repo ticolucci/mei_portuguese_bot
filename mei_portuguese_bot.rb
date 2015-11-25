@@ -74,7 +74,7 @@ end
 post "/#{BOT_TOKEN}" do
   p request.body if ENV['DEBUG']
   ping = JSON.parse request.body.read
-  puts '[Info] received new message with keys: #{ping.keys.inspect}'
+  puts "[Info] received new message with keys: #{ping.keys.inspect}"
   p ping if ENV['DEBUG']
 
   final_response = if ping['ok']
