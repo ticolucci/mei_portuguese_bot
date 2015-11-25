@@ -6,9 +6,8 @@ InterfaceChats = DB[:interface_chats]
 Tokens = DB[:tokens]
 
 def send_message(message)
-  bot_api = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/")
+  bot_api = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/sendMessage")
   bot_api.post do |request|
-    request.url 'sendMessage'
     request.headers['Content-Type'] = 'application/json'
     request.body = message
   end
