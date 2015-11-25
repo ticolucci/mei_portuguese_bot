@@ -56,7 +56,7 @@ end
 
 def translate(message)
   translation_api = Faraday.new(url: "http://api.microsofttranslator.com/v2/Http.svc/Translate")
-  puts "requesting translation"
+  puts "[INFO] requesting translation"
   response = translation_api.get do |request|
     request.headers['Authorization'] = "Bearer #{token}"
     request.params['from'] = 'pt'
@@ -101,8 +101,10 @@ def handle_message result
       case message['text']
       when '/start_mei_bot'
         register_chat(message['from']['id'])
+        register_chat(message['chat']['id'])
       when '/end_mei_bot'
         unregister_chat(message['from']['id'])
+        unregister_chat(message['chat']['id'])
       else
         Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
 
