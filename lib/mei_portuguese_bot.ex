@@ -11,6 +11,7 @@ defmodule MeiPortugueseBot do
       supervisor(MeiPortugueseBot.Endpoint, []),
       # Start the Ecto repository
       worker(MeiPortugueseBot.Repo, []),
+      worker(MeiPortugueseBot.Cache, [])
       # Here you could define other workers and supervisors as children
       # worker(MeiPortugueseBot.Worker, [arg1, arg2, arg3]),
     ]
