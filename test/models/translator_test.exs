@@ -2,6 +2,8 @@ defmodule MeiPortugueseBot.TranslatorTest do
   use MeiPortugueseBot.ModelCase, async: true
 
   alias MeiPortugueseBot.Translator
+  alias MeiPortugueseBot.Cache
+  alias MeiPortugueseBot.Token
   import Mock
 
   @config Application.get_env(:mei_portuguese_bot, :translator)
@@ -12,8 +14,9 @@ defmodule MeiPortugueseBot.TranslatorTest do
   end
 
   setup do
+    Cache.delete(:token)
     {_, secs, _} = :os.timestamp
-    token_json = "{\"access_token\":\"token\",\"expires_in\":\"300\"}"
+    token_json = "{\"access_token\":\"new_token\",\"expires_in\":\"300\"}"
     response = %HTTPoison.Response{body: token_json}
     {:ok, response_token: response, now_in_secs: secs}
   end
@@ -43,7 +46,40 @@ defmodule MeiPortugueseBot.TranslatorTest do
     with_mock HTTPoison, [post: fn(_url, _opts) -> {:ok, context[:response_token]} end] do
       token = Translator.fetch_new_token
       assert(token != false) # lookup returns false for inexistent value
-      assert(MeiPortugueseBot.Cache.lookup(:token) == token)
+      assert(Cache.lookup(:token) == token)
+    end
+  end
+
+  test "fetch_token without a token, calls fetch_new_token and returns the token", context do
+    assert(Cache.lookup(:token) == false)
+    with_mock HTTPoison, [post: fn(_url, _opts) -> {:ok, context[:response_token]} end] do
+      token = Translator.fetch_token
+      assert(token != nil)
+      assert(token.access_token == "new_token")
+    end
+  end
+
+  test "fetch_token with a valid cached token, returns the cached value", context do
+    expires_in = context[:now_in_secs] + 300
+    token = %Token{access_token: "cached", expires_in: expires_in}
+    Cache.add(:token, token)
+
+    with_mock HTTPoison, [post: fn(_url, _opts) -> {:ok, context[:response_token]} end] do
+      token = Translator.fetch_token
+      assert(token != nil)
+      assert(token.access_token == "cached")
+    end
+  end
+
+  test "fetch_token with a invalid cached token, returns a new token", context do
+    expires_in = context[:now_in_secs] - 300
+    token = %Token{access_token: "cached", expires_in: expires_in}
+    Cache.add(:token, token)
+
+    with_mock HTTPoison, [post: fn(_url, _opts) -> {:ok, context[:response_token]} end] do
+      token = Translator.fetch_token
+      assert(token != nil)
+      assert(token.access_token == "new_token")
     end
   end
 end

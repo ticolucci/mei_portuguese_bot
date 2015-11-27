@@ -14,4 +14,9 @@ defmodule MeiPortugueseBot.Cache do
     :ets.insert(table, {key, value})
     new_state(table)
   end
+
+  defcast delete(key), state: table do
+    :ets.delete(table, key)
+    new_state(table)
+  end
 end
