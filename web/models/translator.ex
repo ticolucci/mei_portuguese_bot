@@ -12,13 +12,13 @@ defmodule MeiPortugueseBot.Translator do
   end
 
   def fetch_token do
-    case MeiPortugueseBot.Cache.check("token") do
-      [{:token, token}] -> case valid_token(token) do
+    case MeiPortugueseBot.Cache.lookup(:token) do
+      false -> fetch_new_token
+      token -> case valid_token(token) do
         true -> token
         _ -> fetch_new_token
       end
-      _ -> fetch_new_token
-    end 
+    end
   end
 
   def valid_token(token) do
