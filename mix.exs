@@ -38,7 +38,8 @@ defmodule MeiPortugueseBot.Mixfile do
      {:cowboy, "~> 1.0"},
      {:poison, "~> 1.5"},
      {:httpoison, "~> 0.8.0"},
-     {:exactor, "~> 2.2.0"}]
+     {:exactor, "~> 2.2.0"},
+     {:mock, "~> 0.1.1", only: :test}]
   end
 
   # Aliases are shortcut or tasks specific to the current project.
