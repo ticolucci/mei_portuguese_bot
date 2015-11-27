@@ -4,6 +4,8 @@ defmodule MeiPortugueseBot.TranslatorTest do
   alias MeiPortugueseBot.Translator
   import Mock
 
+  @config Application.get_env(:mei_portuguese_bot, :translator)
+
   setup_all do
     System.put_env("CLIENT_ID", "client_id")
     System.put_env("CLIENT_SECRET", "client_secret")
@@ -25,7 +27,7 @@ defmodule MeiPortugueseBot.TranslatorTest do
       token = Translator.fetch_new_token
       assert(called(
         HTTPoison.post(
-          MeiPortugueseBot.translator_configs[:auth_host],
+          @config[:auth_host],
           {:form, [{:client_id, System.get_env("CLIENT_ID")},
                    {:client_secret, System.get_env("CLIENT_SECRET")},
                    {:scope, 'http://api.microsofttranslator.com'},

@@ -28,11 +28,4 @@ defmodule MeiPortugueseBot do
     MeiPortugueseBot.Endpoint.config_change(changed, removed)
     :ok
   end
-
-  def translator_configs do
-    %{
-      auth_host: "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
-      translate_host: "http://api.microsofttranslator.com/v2/Http.svc/Translate"
-    }
-  end
 end

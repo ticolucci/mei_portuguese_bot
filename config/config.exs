@@ -14,6 +14,10 @@ config :mei_portuguese_bot, MeiPortugueseBot.Endpoint,
   pubsub: [name: MeiPortugueseBot.PubSub,
            adapter: Phoenix.PubSub.PG2]
 
+config :mei_portuguese_bot, :translator,
+  auth_host: "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
+  translate_host: "http://api.microsofttranslator.com/v2/Http.svc/Translate"
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",

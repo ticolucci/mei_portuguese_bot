@@ -1,9 +1,10 @@
 defmodule MeiPortugueseBot.Translator do
+  @config Application.get_env(:mei_portuguese_bot, :translator)
 
   def translate(from, to, text) do
     token = fetch_token
     {:ok, response} = HTTPoison.get(
-      MeiPortugueseBot.translator_configs[:translate_host],
+      @config[:translate_host],
       [{:Authorization, "Bearer " <> token.access_token}],
       [params: [from: from, to: to, text: text]]
     )
@@ -28,9 +29,8 @@ defmodule MeiPortugueseBot.Translator do
   def fetch_new_token do
     client_id = System.get_env("CLIENT_ID")
     client_secret = System.get_env("CLIENT_SECRET")
-
     {:ok, response} = HTTPoison.post(
-      MeiPortugueseBot.translator_configs[:auth_host],
+      @config[:auth_host],
       {:form, [{:client_id, client_id},
                {:client_secret, client_secret},
                {:scope, 'http://api.microsofttranslator.com'},
