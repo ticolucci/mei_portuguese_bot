@@ -3,7 +3,7 @@ defmodule MeiPortugueseBot.Translator do
   def translate(from, to, text) do
     token = fetch_token
     {:ok, response} = HTTPoison.get(
-      "http://api.microsofttranslator.com/v2/Http.svc/Translate",
+      MeiPortugueseBot.translator_configs[:translate_host],
       [{:Authorization, "Bearer " <> token.access_token}],
       [params: [from: from, to: to, text: text]]
     )
@@ -30,16 +30,19 @@ defmodule MeiPortugueseBot.Translator do
     client_secret = System.get_env("CLIENT_SECRET")
 
     {:ok, response} = HTTPoison.post(
-      "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
+      MeiPortugueseBot.translator_configs[:auth_host],
       {:form, [{:client_id, client_id},
                {:client_secret, client_secret},
                {:scope, 'http://api.microsofttranslator.com'},
                {:grant_type, 'client_credentials'}]
       }
     )
+
     http_token = Poison.decode!(response.body, as: MeiPortugueseBot.Token)
+
     {expires_in_integer, _} = Integer.parse(http_token.expires_in)
     expires_in = now_in_secs + expires_in_integer
+
     token = %MeiPortugueseBot.Token{access_token: http_token.access_token, expires_in: expires_in}
     MeiPortugueseBot.Cache.add(:token, token)
     token
