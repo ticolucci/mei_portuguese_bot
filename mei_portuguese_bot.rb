@@ -130,8 +130,6 @@ def sticker_message(message, from)
   puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
   InterfaceChats.map(:chat_id).each do |chat_id|
     request = send_message({chat_id: chat_id, text: "#{sender(from)} sent the sticker:\n"}.to_json)
-    puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-
     request = send_sticker({chat_id: chat_id, sticker: message['sticker']['file_id']}.to_json)
     puts "[Info] sticker sent"
   end
