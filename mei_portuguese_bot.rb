@@ -51,14 +51,13 @@ end
 
 def token
   last_token = Tokens.order(:expires_at).last
-  puts "Last token:"
-  p last_token
   if last_token && last_token[:expires_at] > Time.now.to_i + 10
     last_token[:value]
   else
-    puts "creating new token"
+    puts "[INFO] creating new token"
     new_token = get_new_token
     save_token(new_token)
+    puts "[INFO] new token created"
     new_token['access_token']
   end
 end
@@ -73,7 +72,8 @@ def translate(message)
     request.params['text'] = message
   end
   if response.status.to_i > 200 && response.body =~ /^<html>/
-    p "[Error] translation api returned this:\n#{response.body}"
+    puts "[Error] translation api returned this:\n#{response.body}"
+    "[Error] translation api returned this:\n#{response.body}"
   else
     response.body =~ />([^<]+)</
     $1
@@ -174,7 +174,7 @@ end
 post "/#{BOT_TOKEN}" do
   ping = JSON.parse request.body.read
   puts "[Info] received new message with keys: #{ping.keys.inspect}"
-  p ping if ENV['DEBUG']
+  puts "[DEBUG] #{ping.inspect}" if ENV['DEBUG']
 
   json(process(ping))
 end
