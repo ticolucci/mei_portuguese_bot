@@ -13,6 +13,14 @@ def send_message(message)
   end
 end
 
+def send_sticker(message)
+  bot_api = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/sendSticker")
+  bot_api.post do |request|
+    request.headers['Content-Type'] = 'application/json'
+    request.body = message
+  end
+end
+
 def get_new_token
   tokens_api = Faraday.new(url: "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13")
   response = tokens_api.post do |request|
@@ -92,29 +100,51 @@ def unregister_chat chat_id
   end
 end
 
+def sender(from)
+  "#{from['first_name']} #{from['last_name']} (#{from['username']})"
+end
+
+def text_message(message, from)
+  case message['text']
+  when '/start_mei_bot'
+    # register_chat(message['chat']['id'])
+  when '/end_mei_bot'
+    # unregister_chat(message['chat']['id'])
+  else
+    translated_message = "#{sender(from)} said:\n"
+    translated_message << translate(message['text'])
+
+    puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
+    InterfaceChats.map(:chat_id).each do |chat_id|
+      request = send_message({chat_id: chat_id, text: translated_message}.to_json)
+      puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
+    end
+    { published_message: translated_message }
+  end
+end
+
+def sitcker_message(message, from)
+  puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
+  InterfaceChats.map(:chat_id).each do |chat_id|
+    request = send_message({chat_id: chat_id, text: "#{sender(from)} sent the sticker:\n"}.to_json)
+    puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
+
+    request = send_sticker({chat_id: chat_id, sticker: message['sticker']['file_id']}.to_json)
+    puts "[Info] sticker sent"
+  end
+
+  { published_message: translated_message }
+end
+
 def handle_message result
   return {already: 'processed'} if Events[telegram_id: result['update_id']]
   DB.transaction do
     message = result['message']
-    case message['text']
-    when '/start_mei_bot'
-      # register_chat(message['chat']['id'])
-    when '/end_mei_bot'
-      # unregister_chat(message['chat']['id'])
-    else
-      Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
+    Events.insert(telegram_id: result['update_id'], content: {message: message}.to_json)
+    from  = message['from']
 
-      from  = message['from']
-      translated_message = "#{from['first_name']} #{from['last_name']} (#{from['username']}) said:\n"
-      translated_message << translate(message['text'])
-
-      puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
-      InterfaceChats.map(:chat_id).each do |chat_id|
-        request = send_message({chat_id: chat_id, text: translated_message}.to_json)
-        puts "[Info] send_message({chat_id: #{chat_id}, text: #{translated_message}}.to_json)"
-      end
-      { published_message: translated_message }
-    end
+    text_message(message, from) if message['text']
+    sticker_message(message, from) if message['sticker']
   end
 end
 
