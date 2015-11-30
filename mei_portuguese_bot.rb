@@ -5,6 +5,8 @@ Events = DB[:events]
 InterfaceChats = DB[:interface_chats]
 Tokens = DB[:tokens]
 
+EMOJI = /([\u{1F600}-\u{1F6FF}])/
+
 def send_message(message)
   bot_api = Faraday.new(url: "https://api.telegram.org/bot#{BOT_TOKEN}/sendMessage")
   bot_api.post do |request|
@@ -112,7 +114,15 @@ def text_message(message, from)
     # unregister_chat(message['chat']['id'])
   else
     translated_message = "#{sender(from)} said:\n"
-    translated_message << translate(message['text'])
+    text = message['text']
+
+    text.split(EMOJI).each do |partial|
+      if partial =~ EMOJI
+        translated_message << partial
+      else
+        translated_message << (translate(partial))
+      end
+    end
 
     puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
     InterfaceChats.map(:chat_id).each do |chat_id|
