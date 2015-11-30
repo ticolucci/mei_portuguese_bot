@@ -133,8 +133,7 @@ def sticker_message(message, from)
     request = send_sticker({chat_id: chat_id, sticker: message['sticker']['file_id']}.to_json)
     puts "[Info] sticker sent"
   end
-
-  { published_message: translated_message }
+  { published_message: 'sticker' }
 end
 
 def handle_message result
