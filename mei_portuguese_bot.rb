@@ -115,14 +115,7 @@ def text_message(message, from)
   else
     translated_message = "#{sender(from)} said:\n"
     text = message['text']
-
-    text.split(EMOJI).each do |partial|
-      if partial =~ EMOJI
-        translated_message << partial
-      else
-        translated_message << (translate(partial))
-      end
-    end
+    translated_message << Rumoji.encode(translate(Rumoji.decode(text)))
 
     puts "[Info] going to publish message to #{InterfaceChats.count} telegram things"
     InterfaceChats.map(:chat_id).each do |chat_id|

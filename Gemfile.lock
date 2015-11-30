@@ -10,6 +10,7 @@ GEM
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
+    rumoji (0.4.1)
     sequel (4.28.0)
     sinatra (1.4.6)
       rack (~> 1.4)
@@ -27,6 +28,7 @@ DEPENDENCIES
   faraday
   json
   pg
+  rumoji
   sequel
   sinatra
   sinatra-json
